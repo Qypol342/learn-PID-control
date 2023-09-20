@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learn PID</title>
+    <link href="/dist/output.css" rel="stylesheet">
+</head>
+<body>
+    <h1>Welcom to the Heater PID play ground</h1>
+
+    <p id="value">value</p>
+
+    <canvas id="myChart" style="width:100%;max-width:700px"></canvas>
+
+    <button id="heaterON" class="p-2 bg-green-200">Set heater on</button>
+    <button id="heaterOFF" class="p-2 bg-red-200">Set heater off</button>
+    <label for="togglePID" >
+        <input id="togglePID" type="checkbox">Toggle PID
+      </label>
+      <br>
+      <label>
+        <input id="kp" value="1" type="number">
+        kp
+      </label>
+      <label>
+      <input id="ki" value="0.01" type="number">
+        ki
+      </label>
+      <label>
+      <input id="kd" value="0.1" type="number">
+        kd
+      </label>
+      <br>
+      <label for="heaterSlider">Heater Control:</label>
+      <input type="range" id="heaterSlider" min="0" max="100" step="1">
+      <span id="heaterValueDisplay">0</span>
+
+
+</body>
+</html>
+
+<script
+src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js">
+</script>
+
+<script>
+    const valueDisplay = document.querySelector('#value');
+    const buttonHeaterON = document.querySelector('#heaterON');
+    const buttonHeaterOFF = document.querySelector('#heaterOFF');
+    const buttonTogglePID = document.querySelector('#togglePID');
+    const heaterSlider = document.getElementById('heaterSlider');
+    const heaterValueDisplay = document.getElementById('heaterValueDisplay');
+        
+    const inputKp = document.querySelector('#kp');
+    const inputKi = document.querySelector('#ki');
+    const inputKd = document.querySelector('#kd');
+    const maxSize = 100
+    let temps = []
+    let heaterValues = []
+    let targetValues = []
+
+    let heatDelai = 0;
+    let temp = 0;
+    let heaterValue = 0;
+    let targetValue = 50;
+    let isPID = false;
+
+    // Constants for PID control
+    let kp = 1.0; // Proportional gain
+    let ki = 0.01; // Integral gain
+    let kd = 0.1; // Derivative gain
+
+    // Variables for PID control
+    let integral = 0;
+    let prevError = 0;
+
+    function pidControl() {
+        const error = targetValue - temp;
+        integral += error;
+        const derivative = error - prevError;
+        prevError = error;
+
+        // Calculate the control output based on PID control
+        const controlOutput = kp * error + ki * integral + kd * derivative;
+
+        // Set the heater value based on the control output
+        if (controlOutput >= 50) {
+            heaterValue = controlOutput <100? controlOutput : 100; // Heater is ON
+        } else {
+            heaterValue = 0; // Heater is OFF
+        }
+    }
+
+    const xValues = [50,60,70,80,90,100,110,120,130,140,150];
+
+    const myChart = new Chart("myChart", {
+            type: "line",
+            data: {
+                labels: xValues,
+                datasets: [
+                    {
+                backgroundColor:"rgba(0,0,255,1.0)",
+                borderColor: "rgba(0,0,255,0.1)",
+                data: temps
+                },
+                {
+                backgroundColor:"rgba(0,255,0,1.0)",
+                borderColor: "rgba(0,255,0,0.1)",
+                data: heaterValues,
+                fill: false,
+                },
+                {
+                backgroundColor:"rgba(255,0,0,1.0)",
+                borderColor: "rgba(255,0,0,0.1)",
+                data: targetValues,
+                fill: false,
+                }
+            ]
+            },
+            options: {
+                scales: {
+                    y: {
+                    suggestedMin: 0,    // Set the minimum value for the y-axis
+                    suggestedMax: 100   // Set the maximum value for the y-axis
+                    }
+                }
+                            }
+        });
+    
+
+    function run(display){
+        if (heaterValue === 0){
+            heatDelai = heatDelai*0.998
+        }else{
+            heatDelai = heatDelai*0.99 + heaterValue*0.01
+        }
+        if (isPID){
+            pidControl()
+        }
+        temp = heatDelai
+         display.innerHTML = temp
+         
+         heaterSlider.value = heaterValue;
+        heaterValueDisplay.textContent = heaterValue;
+        addValue(temps, temp)
+        addValue(heaterValues, heaterValue)
+        addValue(targetValues, targetValue)
+        const labels = Array.from({ length: temps.length }, (_, i) => i);
+        myChart.data.labels = labels;
+        myChart.data.datasets[0].data = temps
+        myChart.data.datasets[1].data = heaterValues
+        myChart.data.datasets[2].data = targetValues
+
+        myChart.update();
+    }
+
+    function starter(fun, arg){
+        fun(arg)
+        setTimeout(() => starter(fun, arg) , 100 )
+    }
+
+    function addValue(list, newValue){
+        list.push(newValue)
+        if (list.length  > maxSize){
+            list.splice(0, 1);
+        }
+    }
+
+
+    starter(run, valueDisplay)
+
+    buttonHeaterON.addEventListener("click", () => {
+        heaterValue = 100
+    })
+
+    buttonHeaterOFF.addEventListener("click", () => {
+        heaterValue = 0
+    })
+
+    buttonTogglePID.addEventListener("click", () => {
+        isPID = !isPID;
+        kp = parseFloat(inputKp.value);
+        ki = parseFloat(inputKi.value);
+        kd = parseFloat(inputKd.value);
+    })
+
+    
+
+</script>
